@@ -56,40 +56,6 @@ bool isSolid(openvdb::Coord xyz, openvdb::FloatGrid::Ptr solidGrid)
     }
 }
 
-// double spline(double x)
-// {
-//     if (x < 0)
-//     {
-//         x *= -1.0;
-//     }
-//     if (x < 1.0)
-//     {
-//         return 1.5 * (0.5*x*x*x - x*x + 2.0/3.0);
-//     }
-//     if (x < 2.0)
-//     {
-//         return 1.5* ((-1.0 * (x * x * x)/6.0) + x*x - 2.0*x + 4.0/3.0);
-//     }
-//     return 0;
-// }
-
-// double spline(double x)
-// {
-//     if (x < 0)
-//     {
-//         x *= -1.0;
-//     }
-//     if (x < 0.25)
-//     {
-//         return 1.5 * (0.5*64.0*x*x*x - 16.0*x*x + 2.0/3.0);
-//     }
-//     if (x < 0.5)
-//     {
-//         return 1.5* ((-64.0 * (x * x * x)/6.0) + 16*x*x - 58.0*x + 4.0/3.0);
-//     }
-//     return 0;
-// }
-
 openvdb::Vec3d getVelocity(openvdb::Coord c, openvdb::Vec3dGrid::Ptr velocity)
 {
     openvdb::Coord ipjk(c.x()+1, c.y(), c.z());
@@ -155,6 +121,7 @@ void getUnstaggered(openvdb::Vec3dGrid::Ptr original, openvdb::math::Transform::
     original = vels -> deepCopy();
     return;
 }
+
 openvdb::Vec3d clampedCatmullRom(openvdb::Vec3d c, openvdb::Vec3dGrid::Ptr velocity, int bound, openvdb::FloatGrid::Ptr fluidGrid)
 {
     int fcx = round(c.x());
@@ -194,7 +161,6 @@ openvdb::Vec3d clampedCatmullRom(openvdb::Vec3d c, openvdb::Vec3dGrid::Ptr veloc
             {
                 if (isWithinBounds(openvdb::Coord(x, y, z), 58))
                 {
-                    // velc = vaccessor.getValue(openvdb::Coord(x, y, z));
                     velc = getVelocity(openvdb::Coord(x, y, z), velocity);
 
                     minu = velc.x() < minu ? velc.x() : minu;
@@ -218,7 +184,6 @@ openvdb::Vec3d clampedCatmullRom(openvdb::Vec3d c, openvdb::Vec3dGrid::Ptr veloc
             }
         }
     }
-    // weight = 1.0;//experiment
     if (weight != 0)
     {
         u /= weight;
@@ -271,8 +236,6 @@ openvdb::Vec3d CatmullRomFLIP(openvdb::Vec3d c, openvdb::Vec3d vel, openvdb::Vec
             {
                 if(isWithinBounds(openvdb::Coord(x, y, z), 58))
                 {
-                    // velc = vaccessor.getValue(openvdb::Coord(x, y, z));
-                    // velp = vpaccessor.getValue(openvdb::Coord(x, y, z));
                     velc = getVelocity(openvdb::Coord(x, y, z), velocity);
                     velp = getVelocity(openvdb::Coord(x, y, z), velBeforeUpdate);
 
@@ -296,7 +259,6 @@ openvdb::Vec3d CatmullRomFLIP(openvdb::Vec3d c, openvdb::Vec3d vel, openvdb::Vec
     {
         return openvdb::Vec3d(0, 0, 0);
     }
-    // std::cout << weight << " " << delta/weight << std::endl;
     return delta/weight;
 }
 
@@ -322,20 +284,15 @@ void p2gCatmullRom(openvdb::Vec3d c, openvdb::Vec3d velc, openvdb::Vec3dGrid::Pt
         {
             for (int z = minz; z <= maxz; ++z)
             {
-                // std::mutex mu = ;
-                // {
-                    // tbb::M::scoped_lock myLock(locks[x+bound][y+bound][z+bound]);
                 openvdb::Coord tc = openvdb::Coord(x, y, z);
                 if (!isSolid(tc, solidGrid) && isWithinBounds(tc, bound - 2))
                 {
                     locks[x+bound][y+bound][z+bound].lock();
                     double cw = spline(c.x() - x) * spline(c.y() - y) * spline(c.z() - z);
                     waccessor.setValue(tc, waccessor.getValue(tc) + cw);
-                    // std::cout << tc << " " << waccessor.getValue(tc) << std::endl;
                     vaccessor.setValue(tc, vaccessor.getValue(tc) + cw * velc);
                     locks[x+bound][y+bound][z+bound].unlock();
                 }
-                // }
             }
         }
     }
@@ -423,9 +380,7 @@ void setA(double dx, double dt, double rho, openvdb::FloatGrid::Ptr grid, openvd
                                     double val2 = gaccessor.getValue(ipjk);
                                     if (val2 > 0)
                                     {
-                                        // daccessor.setValue(c, daccessor.getValue(c) + scale);
                                         daccessor.setValue(ipjk, daccessor.getValue(ipjk) + scale);
-                                        // iaccessor.setValue(c, -1 * scale);
                                     }
 
                                 }
@@ -435,9 +390,7 @@ void setA(double dx, double dt, double rho, openvdb::FloatGrid::Ptr grid, openvd
                                     double val2 = gaccessor.getValue(ijpk);
                                     if (val2 > 0)
                                     {
-                                        // daccessor.setValue(c, daccessor.getValue(c) + scale);
                                         daccessor.setValue(ijpk, daccessor.getValue(ijpk) + scale);
-                                        // jaccessor.setValue(c, -1 * scale);
                                     }
                                 }
 
@@ -447,9 +400,7 @@ void setA(double dx, double dt, double rho, openvdb::FloatGrid::Ptr grid, openvd
                                     double val2 = gaccessor.getValue(ijkp);
                                     if (val2 > 0)
                                     {
-                                        // daccessor.setValue(c, daccessor.getValue(c) + scale);
                                         daccessor.setValue(ijkp, daccessor.getValue(ijkp) + scale);
-                                        // kaccessor.setValue(c, -1 * scale);
                                     }
                                 }
                             }
@@ -888,33 +839,13 @@ struct PointList
 
     // Bad approach used here
     void add(const openvdb::Vec3d &p) { if(abs(p.x()) < boundary - 2 && abs(p.y()) < boundary - 2 && abs(p.z()) < boundary - 2) {positions.push_back(p); velocities.push_back(openvdb::Vec3d(0, 0, 0)); initializedVelocities.push_back(false);}}
-    // Right now threading is used here. But I believe better approach will be to use K-D trees
-    // double interpolate(openvdb::Vec3d xyz, double &sum, std::mutex &l)
-    // {
-    //     double tsum = 0;
-    //     tbb::parallel_for( size_t(0), size(), [&]( size_t i )
-    //     {
-    //         tsum = spline(positions[i].x() - xyz.x()) * spline(positions[i].y() - xyz.y()) * spline(positions[i].z() - xyz.z());
-    //         if (tsum != 0)
-    //         {
-    //             l.lock();
-    //             sum += tsum;
-    //             l.unlock();
-    //         }
-    //     }
-    //     );
-
-    //     return sum;
-    // }
 
     void interpolate(openvdb::FloatGrid::Ptr containerGrid, openvdb::FloatGrid::Ptr solidGrid)
     {
         tbb::parallel_for( size_t(0), size(), [&]( size_t i )
         {
             openvdb::Vec3d c = positions[i];
-            // if (c.x() < 50)
-            // {
-                            int fcx = round(c.x());
+            int fcx = round(c.x());
             int fcy = round(c.y());
             int fcz = round(c.z());
 
@@ -947,7 +878,6 @@ struct PointList
             }
 
         }
-            // }
         );
     }
     void interpFromGrid(openvdb::Vec3dGrid::Ptr velocity, int bound, openvdb::FloatGrid::Ptr fluidGrid)
@@ -982,7 +912,6 @@ struct PointList
 
                 openvdb::Vec3d vel = clampedCatmullRom(positions[i], velocity, bound, fluidGrid);
                 
-                // positions[i] = position;
                 velocities[i] = vel;
                 if (maxSpeed < velocities[i].length())
                 {
@@ -1022,19 +951,15 @@ struct PointList
                 if (isSolid(openvdb::Coord(round((positions[i]+vx).x()), positions[i].y(), positions[i].z()), solidGrid))
                 {
                     velocities[i].x() *= -1.0*e;
-                    // velocities[i].x() *= 0;
                 }
                 if (isSolid(openvdb::Coord(positions[i].x(), round((positions[i]+vy).y()), positions[i].z()), solidGrid))
                 {
                     velocities[i].y() *= -1.0*e;
-                    // velocities[i].y() *= 0;
                 }
                 if (isSolid(openvdb::Coord(positions[i].x(), positions[i].y(), round((positions[i]+vz).z())), solidGrid))
                 {
                     velocities[i].z() *= -1.0*e;
-                    // velocities[i].z() *= 0;
                 }
-                // positions[i] += velocities[i]*timestep;
                 positions[i] += velocities[i]*timestep;                
             }
             else
@@ -1075,7 +1000,6 @@ struct PointList
         tbb::parallel_for( size_t(0), size(), [&]( size_t i )
         {
             openvdb::Vec3d position = positions[i];
-            // std::cout << timestep * velocities[i] << std::endl;
             position += timestep * velocities[i];
 
             // Code to take care of stuck particles
@@ -1086,24 +1010,6 @@ struct PointList
             openvdb::Coord rcoord = openvdb::Coord(rx, ry, rz);
             if (isSolid(rcoord, solidGrid))
             {
-                // if ((velocities[i].x() * (naccessor.getValue(rcoord).x())) < 0)
-                // {
-                //     velocities[i].x() *= -1.0 * e;
-                // }
-                // else
-                // {
-                //     if ((velocities[i].y() * (naccessor.getValue(rcoord).y())) < 0)
-                //     {
-                //         velocities[i].y() *= -1.0 * e;
-                //     }
-                //     else
-                //     {
-                //         if ((velocities[i].z() * (naccessor.getValue(rcoord).z())) < 0)
-                //         {
-                //             velocities[i].z() *= -1.0 * e;
-                //         }
-                //     }
-                // }
                 openvdb::Vec3d vx = openvdb::Vec3d(velocities[i].x() * timestep, 0, 0);
                 openvdb::Vec3d vy = openvdb::Vec3d(0, velocities[i].y() * timestep, 0);
                 openvdb::Vec3d vz = openvdb::Vec3d(0, 0, velocities[i].z() * timestep);
@@ -1111,19 +1017,15 @@ struct PointList
                 if (isSolid(openvdb::Coord(round((positions[i]+vx).x()), positions[i].y(), positions[i].z()), solidGrid))
                 {
                     velocities[i].x() *= -1.0*e;
-                    // velocities[i].x() *= 0;
                 }
                 if (isSolid(openvdb::Coord(positions[i].x(), round((positions[i]+vy).y()), positions[i].z()), solidGrid))
                 {
                     velocities[i].y() *= -1.0*e;
-                    // velocities[i].y() *= 0;
                 }
                 if (isSolid(openvdb::Coord(positions[i].x(), positions[i].y(), round((positions[i]+vz).z())), solidGrid))
                 {
                     velocities[i].z() *= -1.0*e;
-                    // velocities[i].z() *= 0;
                 }
-                // positions[i] += velocities[i]*timestep;
                 positions[i] += velocities[i]*timestep;                
             }
             else
@@ -1132,28 +1034,6 @@ struct PointList
             }
             }
 );
-        // for (int i = 0; i < size(); ++i)
-        // {
-        //     int rx = round(positions[i].x());
-        //     int ry = round(positions[i].y());
-        //     int rz = round(positions[i].z());
-
-        //     if (isSolid(openvdb::Coord(rx, ry, rz), solidGrid))
-        //     {
-        //         if ((velocities[i].x() * (rx - positions[i].x())) > 0)
-        //         {
-        //             velocities[i].x() *= -1.0 * e;
-        //         }
-        //         if ((velocities[i].y() * (ry - positions[i].y())) > 0)
-        //         {
-        //             velocities[i].y() *= -1.0 * e;
-        //         }
-        //         if ((velocities[i].z() * (rz - positions[i].z())) > 0)
-        //         {
-        //             velocities[i].z() *= -1.0 * e;
-        //         }
-        //     }
-        // }
 
     }
     void out(openvdb::FloatGrid::Ptr outgrid)
@@ -1167,12 +1047,6 @@ struct PointList
             if (rx < 50)
             {
                 outGridAccessor.setValue(openvdb::Coord(rx, ry, rz), 1);
-                // outGridAccessor.setValue(openvdb::Coord(rx+1, ry, rz), 1);
-                // outGridAccessor.setValue(openvdb::Coord(rx, ry+1, rz), 1);
-                // outGridAccessor.setValue(openvdb::Coord(rx, ry, rz+1), 1);
-                // outGridAccessor.setValue(openvdb::Coord(rx, ry, rz-1), 1);
-                // outGridAccessor.setValue(openvdb::Coord(rx, ry-1, rz), 1);
-                // outGridAccessor.setValue(openvdb::Coord(rx-1, ry, rz), 1);
             }
         }); 
     }
@@ -1190,7 +1064,6 @@ struct PointList
                 if (rx < 50)
                 {
                     openvdb::Coord rcoord = openvdb::Coord(rx, ry, rz);
-                    // std::cout << rcoord << std::endl;
                     locks[rx+60][ry+60][rz+60].lock();
                     if (naccessor.getValue(rcoord) + 1 > numParticlesPerCell)
                     {
@@ -1252,17 +1125,9 @@ struct PointList
         }
         tbb::parallel_for( size_t(0), size(), [&]( size_t i )
         {
-            // if (positions[i].x() < 50)
-            // {
                 p2gCatmullRom(positions[i], velocities[i], velocity, weights, boundary, locks, solidGrid);
-            // }
         });
         openvdb::FloatGrid::Accessor waccessor = weights->getAccessor();
-        // std::cout << waccessor.getValue(openvdb::Coord(-4, -4, -4)) << std::endl;
-        // std::cout << waccessor.getValue(openvdb::Coord(-2, 3, -3)) << std::endl;
-        // std::cout << waccessor.getValue(openvdb::Coord(-3, -2, 0)) << std::endl;
-        // std::cout << waccessor.getValue(openvdb::Coord(4, 3, 2)) << std::endl;
-        // std::cout << waccessor.getValue(openvdb::Coord(0, 0, 0)) << std::endl;
         for(int x = -60; x <=60; x++)
         {
             for(int y = -60; y <=60; y++)
@@ -1270,7 +1135,6 @@ struct PointList
                     for (int z = -60; z <= 60; z++)
                     {
                         openvdb::Coord c = openvdb::Coord(x, y, z);
-                        // std::cout << iter.getCoord() << " " << waccessor.getValue(iter.getCoord()) << std::endl;
                         double w = waccessor.getValue(c);
                         if (w > 0)
                         {
@@ -1373,7 +1237,6 @@ int main(int argc, char* argv[])
     openvdb::Int32Grid::Ptr indices = openvdb::Int32Grid::create(0);
     indices->setTransform(trans);
 
-    // openvdb::Vec3dGrid::Ptr vels = openvdb::Vec3dGrid::create(openvdb::Vec3d(0, 0, 0));
     openvdb::Vec3dGrid::Ptr vels = openvdb::Vec3dGrid::create();
     vels->setTransform(trans);
     vels->fill(openvdb::CoordBBox(openvdb::Coord(-60), openvdb::Coord(60)), openvdb::Vec3d(0, 0, 0), true);
@@ -1388,18 +1251,6 @@ int main(int argc, char* argv[])
     openvdb::Vec3dGrid::Accessor vaccessor = vels->getAccessor();
     openvdb::FloatGrid::Accessor caccessor = containerGrid->getAccessor();
 
-    // Voxelize all leafs
-    // openvdb::tools::activate(vels->tree(), openvdb::Vec3d(1,1,1));
-    // openvdb::tools::activate(fluidGrid->tree(), 0);
-    // openvdb::tools::activate(containerGrid->tree(), 0);
-    // openvdb::tools::activate(solidGrid->tree(), 0);
-    // openvdb::tools::activate(normals->tree(), openvdb::Vec3d(0,0,0));
-
-    // vels->tree().voxelizeActiveTiles();
-    // fluidGrid->tree().voxelizeActiveTiles();
-    // containerGrid->tree().voxelizeActiveTiles();
-    // solidGrid->tree().voxelizeActiveTiles();
-    // normals->tree().voxelizeActiveTiles();
 
     using Randgen = std::mersenne_twister_engine<uint32_t, 32, 351, 175, 19, 0xccab8ee7, 11, 0xffffffff, 7, 0x31b6ab00, 15, 0xffe50000, 17, 1812433253>;
     for(int x = -60; x <=60; x++)
@@ -1492,11 +1343,8 @@ int main(int argc, char* argv[])
     //         }
     //     }
     // }
-    // openvdb::GridPtrVec grids;
     PointList pos;
     pos.initialize(60, trans);
-    // const openvdb::Index64 pointCount = 400;
-    // Randgen mtRand;
     std::mt19937 mtRandi(0);
     openvdb::tools::UniformPointScatter<PointList, std::mt19937> scatteri(pos, 10.f, mtRandi);
     scatteri.operator()<openvdb::FloatGrid>(*fluidGrid);
@@ -1523,9 +1371,7 @@ for (int i = 0; i < 500; ++i)
     std::string filename = "simulation/mygrids" + std::to_string(i) + ".vdb";
     openvdb::io::File file2(filename);
     openvdb::GridPtrVec grids2;
-    // Randgen mtRand;
     std::mt19937 mtRand(i+1);
-    // mtRand.seed(i+1);
     openvdb::tools::UniformPointScatter<PointList, std::mt19937> scatter(pos, 10.f, mtRand);
 
     
@@ -1534,29 +1380,9 @@ for (int i = 0; i < 500; ++i)
     // {
         // scatter.operator()<openvdb::FloatGrid>(*fluidGrid);
     // }
-    // pos.resample(8);
     std::cout << "2" << std::endl;
     pos.P2Gtransfer(vels, solidGrid);
-    // scatter.operator()<openvdb::FloatGrid>(*fluidGrid);
     std::cout << "3" << std::endl;
-    // grids.push_back(vels -> deepCopy());
-    // double maxSpeed = 0;
-    // for(int x = -60; x <=60; x++)
-    // {
-    //     for(int y = -60; y <=60; y++)
-    //         {
-    //             for (int z = -60; z <= 60; z++)
-    //             {
-    //                 openvdb::Coord xyz = openvdb::Coord(x, y, z);
-    //                 double val = vaccessor.getValue(xyz).length();
-    //                 maxSpeed = val < maxSpeed? maxSpeed:val;
-    //             }
-    //         }
-    // }
-    // if (maxSpeed != 0)
-    // {
-    //     dt = dx/maxSpeed;
-    // }
     std::cout << "DT " << dt << std::endl;
 
     indices->fill(openvdb::CoordBBox(openvdb::Coord(-60), openvdb::Coord(60)), -1, true);
@@ -1586,35 +1412,6 @@ for (int i = 0; i < 500; ++i)
 
     pos.interpolate(containerGrid, solidGrid);
 
-    // for(int x = -60; x <=60; x++)
-    // {
-    //     for(int y = -60; y <=60; y++)
-    //         {
-    //             for (int z = -60; z <= 60; z++)
-    //             {
-    //                 openvdb::Coord xyz = openvdb::Coord(x, y, z);
-    //                 if(!isSolid(xyz, solidGrid) && caccessor.getValue(xyz) > 0)
-    //                 {
-    //                     vaccessor.setValue(xyz, vaccessor.getValue(xyz) + dt * gravity);
-    //                 }
-    //             }
-    //         }
-    // }
-
-    // for(int x = -60; x <=60; x++)
-    // {
-    //     for(int y = -60; y <=60; y++)
-    //         {
-    //             for (int z = -60; z <= 60; z++)
-    //             {
-    //                 openvdb::Coord xyz = openvdb::Coord(x, y, z);
-    //                 if(!isSolid(xyz, solidGrid))
-    //                 {
-    //                     vaccessor.setValue(xyz, vaccessor.getValue(xyz) + dt * gravity);
-    //                 }
-    //             }
-    //         }
-    // }
 
     for(int x = -60; x <=60; x++)
     {
@@ -1652,12 +1449,10 @@ for (int i = 0; i < 500; ++i)
     Eigen::VectorXd p(numActive);
     grids.push_back(outputGrid -> deepCopy());
     grids2.push_back(outputGrid -> deepCopy());
-    // grids.push_back(vels -> deepCopy());
     Eigen::VectorXd b(numActive);        
     Eigen::VectorXd b2(numActive);        
     double error;
     velBeforeUpdate = vels -> deepCopy();
-    // getStaggered(vels, trans);
     std::cout << "Before" << std::endl;
     do 
     {
@@ -1670,16 +1465,6 @@ for (int i = 0; i < 500; ++i)
         diver->fill(openvdb::CoordBBox(openvdb::Coord(-60), openvdb::Coord(60)), 0, true);
         rhs->fill(openvdb::CoordBBox(openvdb::Coord(-60), openvdb::Coord(60)), 0, true);
 
-        // if (!areVoxelized)
-        // {
-        //     Adiag->tree().voxelizeActiveTiles();
-        //     Aplusi->tree().voxelizeActiveTiles();
-        //     Aplusj->tree().voxelizeActiveTiles();
-        //     Aplusk->tree().voxelizeActiveTiles();
-        //     diver->tree().voxelizeActiveTiles();
-        //     rhs->tree().voxelizeActiveTiles();
-        //     areVoxelized = true;
-        // }
 
         setRHS(dx, containerGrid, vels, rhs, solidGrid, gravity, dt);
         setDiver(dx, vels, diver, rhs, containerGrid, solidGrid);
@@ -1699,28 +1484,6 @@ for (int i = 0; i < 500; ++i)
     }while(error > 0.1);
     pos.defined = defined->deepCopy();
     std::cout << "After" << std::endl;
-    // grids.push_back(vels -> deepCopy());
-    // openvdb::tools::PointAdvect<openvdb::Vec3dGrid, std::vector<openvdb::Vec3d>, true, openvdb::util::NullInterrupter> pa(*vels);
-    // pa.advect(pos.list, dt);
-    // pos.advect(dt, vels, 60, containerGrid);
-    // getUnstaggered(vels, trans);
-    // maxSpeed = 0;
-    // for(int x = -60; x <=60; x++)
-    // {
-    //     for(int y = -60; y <=60; y++)
-    //         {
-    //             for (int z = -60; z <= 60; z++)
-    //             {
-    //                 openvdb::Coord xyz = openvdb::Coord(x, y, z);
-    //                 double val = vaccessor.getValue(xyz).length();
-    //                 maxSpeed = val < maxSpeed? maxSpeed:val;
-    //             }
-    //         }
-    // }
-    // if (maxSpeed != 0)
-    // {
-    //     dt = dt < dx/maxSpeed ? dt : dx/maxSpeed;
-    // }
 
     // pos.advect(0.1, dx, dt, vels, 60, containerGrid, solidGrid);
     // Same to do for pic
